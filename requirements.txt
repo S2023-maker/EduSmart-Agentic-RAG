@@ -12,3 +12,5 @@ sentence-transformers
 pypdf
 pandas
 numpy
+python-pptx
+openpyxl
