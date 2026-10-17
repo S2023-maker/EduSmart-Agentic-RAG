@@ -1,0 +1,28 @@
+
+[
+  {
+    "question": "What is the function of the human heart?",
+    "expected_behavior": "answer",
+    "expected_topic": "human heart and double circulation"
+  },
+  {
+    "question": "How does carbon burn in oxygen?",
+    "expected_behavior": "answer",
+    "expected_topic": "carbon combustion and carbon dioxide"
+  },
+  {
+    "question": "How do CFCs affect the ozone layer?",
+    "expected_behavior": "answer",
+    "expected_topic": "ozone layer depletion"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "expected_behavior": "decline_if_unsupported",
+    "expected_topic": "not covered by Grade 10 Science curriculum"
+  },
+  {
+    "question": "What is the serial number of the laptop used by the author?",
+    "expected_behavior": "decline_if_unsupported",
+    "expected_topic": "personal device information not present in the documents"
+  }
+]

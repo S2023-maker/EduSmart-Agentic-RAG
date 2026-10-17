@@ -1,0 +1,76 @@
+# Environment
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Generated vector database
+vectorstore/faiss_index/
+
+# Evaluation outputs
+evaluation/results/
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Logs
+*.log
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Generated vector databases
+vectorstore/faiss_index/
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+chat_history.db
+uploaded_documents/
+
+# Evaluation outputs
+evaluation/results/
+
+# Private conversation history and uploaded files
+chat_history.db
+uploaded_documents/
+
+# Local generated reports
+evaluation/*_report.csv
+
+# Private or redistributable curriculum content
+curriculum/*.pdf
+faiss_index/
