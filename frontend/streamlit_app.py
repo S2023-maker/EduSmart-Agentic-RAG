@@ -1,3 +1,4 @@
+
 import sys
 from pathlib import Path
 
@@ -33,12 +34,11 @@ from app.chat_history import (
     get_messages,
 )
 
-# Initialize SQLite database
-init_db()
+# ------------------------------------------------------------
+# DATABASE AND PAGE CONFIG
+# ------------------------------------------------------------
 
-# ------------------------------------------------------------
-# PAGE CONFIGURATION
-# ------------------------------------------------------------
+init_db()
 
 st.set_page_config(
     page_title="EduSmart AI Assistant",
@@ -68,6 +68,10 @@ DEFAULTS = {
     "uploaded_documents": [],
     "processed_files": set(),
     "active_conversation_id": None,
+    "generated_quiz": None,
+    "quiz_version": 0,
+    "quiz_submitted": False,
+    "quiz_score": None,
 }
 
 for key, default_value in DEFAULTS.items():
@@ -92,11 +96,7 @@ if not st.session_state.authenticated:
             "Demo account",
             ["admin", "student", "employee"],
         )
-
-        password_input = st.text_input(
-            "Password",
-            type="password",
-        )
+        password_input = st.text_input("Password", type="password")
 
         submitted = st.form_submit_button(
             "Login",
@@ -146,14 +146,12 @@ if st.sidebar.button("Logout", use_container_width=True):
     st.session_state.username = None
     st.session_state.user_role = None
     st.session_state.active_conversation_id = None
-
-    # Keep uploaded documents available in this browser session.
     st.rerun()
 
 st.sidebar.divider()
 
 # ------------------------------------------------------------
-# NAVIGATION OPTIONS
+# NAVIGATION
 # ------------------------------------------------------------
 
 if role == "Admin":
@@ -194,49 +192,40 @@ conversation_ids = {
     conversation["id"] for conversation in conversations
 }
 
-# Do not retain a selection belonging to another username.
-if (
-    st.session_state.active_conversation_id
-    not in conversation_ids
-):
+if st.session_state.active_conversation_id not in conversation_ids:
     st.session_state.active_conversation_id = None
 
-if st.sidebar.button(
-    "➕ New Chat",
-    use_container_width=True,
-):
+if st.sidebar.button("➕ New Chat", use_container_width=True):
     st.session_state.active_conversation_id = None
     st.session_state["feature_navigation"] = "Ask EduSmart"
     st.rerun()
 
-if conversations:
-    for conversation in conversations:
-        conversation_id = conversation["id"]
-        title = conversation["title"]
+for conversation in conversations:
+    conversation_id = conversation["id"]
+    title = conversation["title"]
 
-        if len(title) > 32:
-            title = title[:29] + "..."
+    if len(title) > 32:
+        title = title[:29] + "..."
 
-        is_selected = (
-            st.session_state.active_conversation_id
-            == conversation_id
-        )
+    is_selected = (
+        st.session_state.active_conversation_id == conversation_id
+    )
 
-        if st.sidebar.button(
-            f"💬 {title}",
-            key=f"history_{conversation_id}",
-            type="primary" if is_selected else "secondary",
-            use_container_width=True,
-        ):
-            st.session_state.active_conversation_id = conversation_id
-            st.session_state["feature_navigation"] = "Ask EduSmart"
-            st.rerun()
-else:
+    if st.sidebar.button(
+        f"💬 {title}",
+        key=f"history_{conversation_id}",
+        type="primary" if is_selected else "secondary",
+        use_container_width=True,
+    ):
+        st.session_state.active_conversation_id = conversation_id
+        st.session_state["feature_navigation"] = "Ask EduSmart"
+        st.rerun()
+
+if not conversations:
     st.sidebar.caption("No saved conversations yet.")
 
 st.sidebar.divider()
 
-# Make sure the navigation selection is valid for this role.
 if st.session_state.get("feature_navigation") not in modes:
     st.session_state["feature_navigation"] = modes[0]
 
@@ -258,7 +247,7 @@ def get_embeddings():
 
 
 def process_uploaded_files(uploaded_files):
-    """Extract, split and index newly uploaded documents."""
+    """Extract, split and index uploaded documents."""
 
     new_documents = []
     new_file_names = []
@@ -299,7 +288,6 @@ def process_uploaded_files(uploaded_files):
         chunk_size=1000,
         chunk_overlap=150,
     )
-
     chunks = splitter.split_documents(new_documents)
 
     if not chunks:
@@ -332,14 +320,10 @@ def process_uploaded_files(uploaded_files):
 # ------------------------------------------------------------
 
 st.title("🎓 EduSmart AI Assistant")
-
 st.caption(
     "AI-powered learning, document search and knowledge assistance"
 )
-
-st.write(
-    f"Welcome, **{username}**! You are logged in as **{role}**."
-)
+st.write(f"Welcome, **{username}**! You are logged in as **{role}**.")
 
 # ------------------------------------------------------------
 # ADMIN DOCUMENT UPLOAD
@@ -353,9 +337,7 @@ if mode == "Upload Documents":
         "knowledge base."
     )
 
-    st.info(
-        "Supported formats: PDF, DOCX, TXT, MD, CSV, XLSX and PPTX."
-    )
+    st.info("Supported formats: PDF, DOCX, TXT, MD, CSV, XLSX and PPTX.")
 
     uploaded_files = st.file_uploader(
         "Choose documents",
@@ -380,7 +362,7 @@ if mode == "Upload Documents":
         st.info("No documents have been processed yet.")
 
 # ------------------------------------------------------------
-# ASK EDUSMART WITH PERSISTENT CHAT HISTORY
+# ASK EDUSMART
 # ------------------------------------------------------------
 
 elif mode == "Ask EduSmart":
@@ -399,15 +381,15 @@ elif mode == "Ask EduSmart":
 
     conversation_id = st.session_state.active_conversation_id
 
-    # Display saved messages from the selected conversation.
     if conversation_id is not None:
-        messages = get_messages(conversation_id)
+        try:
+            messages = get_messages(conversation_id)
+            for message in messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+        except Exception as exc:
+            st.error(f"Could not load messages: {exc}")
 
-        for message in messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-    # Question form
     with st.form("ask_form", clear_on_submit=True):
         question = st.text_area(
             "Enter your question",
@@ -427,118 +409,88 @@ elif mode == "Ask EduSmart":
     if submitted:
         if not question.strip():
             st.warning("Please enter a question.")
-
         else:
-            conversation_id = (
-                st.session_state.active_conversation_id
-            )
+            conversation_id = st.session_state.active_conversation_id
 
             try:
-                # Create a conversation for the first question.
                 if conversation_id is None:
                     conversation_id = create_conversation(
                         username,
                         question.strip()[:100],
                     )
+                    st.session_state.active_conversation_id = conversation_id
 
-                    st.session_state.active_conversation_id = (
-                        conversation_id
-                    )
+                save_message(conversation_id, "user", question.strip())
 
-                # Save the user's question.
-                save_message(
-                    conversation_id,
-                    "user",
-                    question.strip(),
-                )
-
-                with st.spinner(
-                    "EduSmart is preparing your answer..."
-                ):
+                with st.spinner("EduSmart is preparing your answer..."):
                     result = answer_question(
                         question.strip(),
-                        vectorstore=(
-                            st.session_state.uploaded_vectorstore
-                        ),
+                        vectorstore=st.session_state.uploaded_vectorstore,
                     )
 
                 answer = str(result.get("answer", ""))
-
-                # Store the answer together with its source details.
                 answer_for_history = answer
-
                 sources = result.get("sources", [])
 
                 if sources:
                     answer_for_history += "\n\n**Sources**\n"
                     answer_for_history += "\n".join(
-                        f"- {Path(str(source)).name}"
-                        for source in sources
+                        f"- {Path(str(source)).name}" for source in sources
                     )
 
                 documents = result.get("documents", [])
 
                 if documents:
-                    answer_for_history += (
-                        "\n\n**Retrieved document excerpts**\n"
-                    )
+                    answer_for_history += "\n\n**Retrieved document excerpts**\n"
 
-                    for index, document in enumerate(
-                        documents,
-                        start=1,
-                    ):
+                    for index, document in enumerate(documents, start=1):
                         metadata = document.metadata
+                        source_name = Path(
+                            str(metadata.get("source", "Document"))
+                        ).name
 
                         answer_for_history += (
-                            f"\n**Excerpt {index} — "
-                            f"{metadata.get('source', 'Document')}**\n"
+                            f"\n**Excerpt {index} — {source_name}**\n"
                         )
 
                         if "page" in metadata:
-                            answer_for_history += (
-                                f"Page: {metadata['page']}\n"
-                            )
-
+                            answer_for_history += f"Page: {metadata['page']}\n"
                         if "slide" in metadata:
-                            answer_for_history += (
-                                f"Slide: {metadata['slide']}\n"
-                            )
-
+                            answer_for_history += f"Slide: {metadata['slide']}\n"
                         if "sheet" in metadata:
-                            answer_for_history += (
-                                f"Worksheet: {metadata['sheet']}\n"
-                            )
+                            answer_for_history += f"Worksheet: {metadata['sheet']}\n"
 
-                        answer_for_history += (
-                            "\n" + document.page_content + "\n"
-                        )
+                        answer_for_history += "\n" + document.page_content + "\n"
 
-                # Save the AI answer in SQLite.
                 save_message(
                     conversation_id,
                     "assistant",
                     answer_for_history,
                 )
-
-                # Refresh the conversation and sidebar.
                 st.rerun()
 
             except Exception as exc:
                 st.error(f"Unable to answer your question: {exc}")
 
 # ------------------------------------------------------------
-# QUIZ
+# TAKE A QUIZ
 # ------------------------------------------------------------
 
 elif mode == "Take a Quiz":
     st.header("📝 Take a Quiz")
+    st.write("Generate a multiple-choice quiz and test your knowledge.")
 
     topic = st.text_input(
         "Enter a quiz topic",
         placeholder="Example: Photosynthesis",
+        key="quiz_topic_input",
     )
 
-    if st.button("Generate Quiz", type="primary"):
+    if st.button(
+        "Generate Quiz",
+        type="primary",
+        key="generate_quiz_button",
+    ):
         if not topic.strip():
             st.warning("Please enter a topic.")
         else:
@@ -546,15 +498,197 @@ elif mode == "Take a Quiz":
                 with st.spinner("Generating your quiz..."):
                     quiz_data = generate_quiz_data(topic.strip())
 
-                st.subheader("Generated Quiz")
+                if hasattr(quiz_data, "model_dump"):
+                    quiz_data = quiz_data.model_dump()
+                elif hasattr(quiz_data, "dict"):
+                    quiz_data = quiz_data.dict()
 
-                if isinstance(quiz_data, (dict, list)):
-                    st.json(quiz_data)
-                else:
-                    st.write(quiz_data)
+                if not isinstance(quiz_data, dict):
+                    raise ValueError(
+                        "Unexpected quiz format. Expected a dictionary."
+                    )
+
+                questions = quiz_data.get("questions", [])
+
+                if not questions:
+                    raise ValueError("No questions were generated.")
+
+                # Validate quiz structure before displaying it.
+                for index, question in enumerate(questions, start=1):
+                    if not isinstance(question, dict):
+                        raise ValueError(
+                            f"Question {index} is not a valid object."
+                        )
+
+                    options = question.get("options", [])
+                    correct_answer = question.get("correct_answer")
+
+                    if len(options) != 4:
+                        raise ValueError(
+                            f"Question {index} must have exactly four options."
+                        )
+
+                    if not all(
+                        isinstance(option, str) and option.strip()
+                        for option in options
+                    ):
+                        raise ValueError(
+                            f"Question {index} has an invalid option."
+                        )
+
+                    if not any(
+                        correct_answer.strip().casefold()
+                        == option.strip().casefold()
+                        for option in options
+                    ) if isinstance(correct_answer, str) else True:
+                        raise ValueError(
+                            f"Question {index} has an invalid correct answer."
+                        )
+
+                    if not question.get("question", "").strip():
+                        raise ValueError(
+                            f"Question {index} has no question text."
+                        )
+
+                st.session_state.generated_quiz = quiz_data
+                st.session_state.quiz_version += 1
+                st.session_state.quiz_submitted = False
+                st.session_state.quiz_score = None
 
             except Exception as exc:
                 st.error(f"Could not generate quiz: {exc}")
+
+    quiz_data = st.session_state.generated_quiz
+
+    if quiz_data:
+        questions = quiz_data["questions"]
+        quiz_version = st.session_state.quiz_version
+
+        st.divider()
+        st.subheader("📝 Your Quiz")
+        st.caption(f"Questions: {len(questions)}")
+
+        with st.form(key=f"quiz_form_{quiz_version}"):
+            for index, question in enumerate(questions, start=1):
+                st.markdown(f"### Question {index}")
+                st.write(question["question"])
+
+                st.radio(
+                    "Choose one answer:",
+                    options=question["options"],
+                    index=None,
+                    key=f"quiz_{quiz_version}_answer_{index}",
+                    label_visibility="collapsed",
+                )
+                st.divider()
+
+            submitted = st.form_submit_button(
+                "Submit Answers",
+                type="primary",
+                use_container_width=True,
+            )
+
+        if submitted:
+            score = 0
+            unanswered = 0
+            results = []
+
+            for index, question in enumerate(questions, start=1):
+                selected_answer = st.session_state.get(
+                    f"quiz_{quiz_version}_answer_{index}"
+                )
+                correct_answer = question["correct_answer"]
+
+                is_correct = (
+                    isinstance(selected_answer, str)
+                    and selected_answer.strip().casefold()
+                    == correct_answer.strip().casefold()
+                )
+
+                if selected_answer is None:
+                    unanswered += 1
+
+                if is_correct:
+                    score += 1
+
+                results.append({
+                    "question_number": index,
+                    "selected_answer": selected_answer,
+                    "correct_answer": correct_answer,
+                    "is_correct": is_correct,
+                    "explanation": question.get(
+                        "explanation",
+                        "No explanation provided.",
+                    ),
+                })
+
+            st.session_state.quiz_score = {
+                "score": score,
+                "total": len(questions),
+                "unanswered": unanswered,
+                "results": results,
+            }
+            st.session_state.quiz_submitted = True
+
+        if st.session_state.quiz_submitted:
+            result = st.session_state.quiz_score
+
+            if result:
+                score = result["score"]
+                total = result["total"]
+                percentage = round(score / total * 100)
+
+                st.divider()
+                st.subheader("📊 Your Results")
+
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Score", f"{score}/{total}")
+                col2.metric("Percentage", f"{percentage}%")
+                col3.metric("Unanswered", result["unanswered"])
+
+                if percentage >= 80:
+                    st.success("Excellent work! 🎉")
+                elif percentage >= 50:
+                    st.info("Good effort! Review the explanations below.")
+                else:
+                    st.warning(
+                        "Keep practising! Review the answers and try again."
+                    )
+
+                st.subheader("✅ Answer Review")
+
+                for answer_result, question in zip(
+                    result["results"], questions
+                ):
+                    number = answer_result["question_number"]
+                    status = (
+                        "Correct ✅"
+                        if answer_result["is_correct"]
+                        else "Incorrect ❌"
+                    )
+
+                    with st.expander(f"Question {number}: {status}"):
+                        st.write(question["question"])
+                        st.write(
+                            "Your answer: "
+                            f"{answer_result['selected_answer'] or 'Not answered'}"
+                        )
+                        st.write(
+                            f"Correct answer: {answer_result['correct_answer']}"
+                        )
+                        st.write(
+                            f"Explanation: {answer_result['explanation']}"
+                        )
+
+                if st.button(
+                    "Generate Another Quiz",
+                    type="primary",
+                    key="another_quiz_button",
+                ):
+                    st.session_state.generated_quiz = None
+                    st.session_state.quiz_submitted = False
+                    st.session_state.quiz_score = None
+                    st.rerun()
 
 # ------------------------------------------------------------
 # TOPIC SUMMARY
@@ -566,6 +700,7 @@ elif mode == "Topic Summary":
     topic = st.text_input(
         "Enter a topic to summarize",
         placeholder="Example: Photosynthesis",
+        key="summary_topic_input",
     )
 
     if st.button("Generate Summary", type="primary"):
@@ -600,6 +735,7 @@ elif mode == "Study Guide":
     topic = st.text_input(
         "Enter a topic for your study guide",
         placeholder="Example: The Human Respiratory System",
+        key="study_guide_topic_input",
     )
 
     if st.button("Create Study Guide", type="primary"):
@@ -632,7 +768,6 @@ elif mode == "Study Guide":
 # ------------------------------------------------------------
 
 st.divider()
-
 st.caption(
     "EduSmart AI Assistant | Demo application for college and office use"
 )
