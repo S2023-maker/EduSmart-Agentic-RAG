@@ -6,7 +6,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 
 # ============================================================
-# PROJECT PATH
+# PROJECT PATHS
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,7 +24,7 @@ def get_embeddings():
 
 
 # ============================================================
-# CURRICULUM VECTORSTORE
+# BUILT-IN CURRICULUM VECTORSTORE
 # ============================================================
 
 def get_vectorstore():
@@ -33,7 +33,7 @@ def get_vectorstore():
 
     if not index_file.exists() or not metadata_file.exists():
         raise FileNotFoundError(
-            f"FAISS index files were not found in {FAISS_DIR}. "
+            f"FAISS index files not found in {FAISS_DIR}. "
             "Please run 'python ingest.py' first."
         )
 
@@ -45,43 +45,28 @@ def get_vectorstore():
 
 
 # ============================================================
-# GENERIC RETRIEVER
+# GENERIC CURRICULUM RETRIEVER
 # ============================================================
 
 def get_retriever(k: int = 4):
-    vectorstore = get_vectorstore()
+    store = get_vectorstore()
 
-    return vectorstore.as_retriever(
+    return store.as_retriever(
         search_type="similarity",
         search_kwargs={"k": k},
     )
 
 
 # ============================================================
-# CURRICULUM RETRIEVAL
+# SEARCH ONE VECTORSTORE
 # ============================================================
 
-def retrieve_documents(
-    query: str,
-    k: int = 4,
-    vectorstore=None,
-):
-    """
-    Retrieve relevant document chunks.
+def _search_store(store, query: str, k: int):
+    """Try MMR retrieval first, then fall back to similarity."""
 
-    MMR tries to return relevant but less-redundant passages.
-    If MMR is unavailable or fails, similarity search is used.
-    """
-
-    if not isinstance(query, str) or not query.strip():
+    if store is None:
         return []
 
-    if k < 1:
-        return []
-
-    store = vectorstore if vectorstore is not None else get_vectorstore()
-
-    # First attempt: MMR retrieval.
     try:
         retriever = store.as_retriever(
             search_type="mmr",
@@ -98,13 +83,80 @@ def retrieve_documents(
             return documents
 
     except Exception as exc:
-        print(f"MMR retrieval unavailable; using similarity search: {exc}")
+        print(f"MMR retrieval fallback: {exc}")
 
-    # Fallback: ordinary similarity retrieval.
-    retriever = store.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": k},
-    )
+    try:
+        return store.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": k},
+        ).invoke(query)
 
-    return retriever.invoke(query)
-    
+    except Exception as exc:
+        print(f"Similarity retrieval failed: {exc}")
+        return []
+
+
+# ============================================================
+# COMBINED RETRIEVAL
+# ============================================================
+
+def retrieve_documents(
+    query: str,
+    k: int = 4,
+    vectorstore=None,
+):
+    """
+    Retrieve from the built-in curriculum and, when supplied,
+    the user's uploaded-document vectorstore.
+
+    Uploaded-document results are considered first, followed by
+    curriculum results. Duplicate chunks are removed.
+    """
+
+    if not isinstance(query, str) or not query.strip():
+        return []
+
+    if not isinstance(k, int) or k < 1:
+        return []
+
+    uploaded_documents = []
+    curriculum_documents = []
+
+    # Search the built-in curriculum.
+    try:
+        curriculum_store = get_vectorstore()
+        curriculum_documents = _search_store(
+            curriculum_store, query, k
+        )
+    except Exception as exc:
+        print(f"Curriculum retrieval unavailable: {exc}")
+
+    # Search the uploaded-document vectorstore if provided.
+    if vectorstore is not None:
+        uploaded_documents = _search_store(
+            vectorstore, query, k
+        )
+
+    # Prioritize uploaded documents, then add curriculum results.
+    combined_documents = []
+    seen = set()
+
+    for document in uploaded_documents + curriculum_documents:
+        metadata = getattr(document, "metadata", {}) or {}
+        content = getattr(document, "page_content", "")
+
+        # Identify duplicate chunks using source, location and content.
+        key = (
+            str(metadata.get("source", "")),
+            str(metadata.get("page", "")),
+            str(metadata.get("slide", "")),
+            str(metadata.get("sheet", "")),
+            content.strip(),
+        )
+
+        if key not in seen:
+            seen.add(key)
+            combined_documents.append(document)
+
+    # Return up to k results from each knowledge source.
+    return combined_documents[: 2 * k]
