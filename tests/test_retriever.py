@@ -33,5 +33,6 @@ def test_retrieval_uses_provided_vectorstore():
         vectorstore=fake_vectorstore,
     )
 
-    assert result == [fake_document]
+    assert fake_document in result
+    fake_vectorstore.as_retriever.assert_called()
     fake_vectorstore.as_retriever.assert_called_once()

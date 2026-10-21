@@ -38,6 +38,10 @@ DEFAULTS = {
     "uploaded_documents": [],
     "processed_files": set(),
     "chat_history": [],
+    "generated_quiz": None,
+    "quiz_topic": "",
+    "quiz_results": None,
+    "latest_answer_result": None,
 }
 
 for key, default_value in DEFAULTS.items():
@@ -86,6 +90,13 @@ if st.sidebar.button("Logout", use_container_width=True):
     st.session_state.authenticated = False
     st.session_state.username = None
     st.session_state.user_role = None
+   
+    st.session_state.generated_quiz = None
+    st.session_state.quiz_results = None
+    st.session_state.latest_answer_result = None
+    st.session_state.uploaded_vectorstore = None
+    st.session_state.uploaded_documents = []
+    st.session_state.processed_files = set()
     st.rerun()
 
 st.sidebar.divider()
@@ -251,6 +262,11 @@ elif mode == "Ask EduSmart":
         )
 
 
+    if st.session_state.chat_history:
+        if st.button("Clear conversation", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
+
     for item in st.session_state.chat_history:
         with st.chat_message(item["role"]):
             st.markdown(item["content"])
@@ -263,43 +279,50 @@ elif mode == "Ask EduSmart":
     )
 
     if st.button("Get Answer", type="primary"):
-        if not question.strip():
+        clean_question = question.strip()
+        if not clean_question:
             st.warning("Please enter a question.")
         else:
             try:
                 with st.spinner("EduSmart is preparing your answer..."):
                     result = answer_question(
-                        question.strip(),
+                        clean_question,
                         vectorstore=st.session_state.uploaded_vectorstore,
                     )
                 answer = str(result.get("answer", "No answer was returned."))
-                st.session_state.chat_history.append({"role": "user", "content": question.strip()})
-                st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                st.subheader("Answer")
-                st.markdown(answer)
-
-                sources = result.get("sources", [])
-                if sources:
-                    st.subheader("Sources")
-                    for source in sources:
-                        st.write(f"📄 {Path(str(source)).name}")
-
-                documents = result.get("documents", [])
-                if documents:
-                    with st.expander("View retrieved document excerpts"):
-                        for index, document in enumerate(documents, start=1):
-                            metadata = document.metadata
-                            source = metadata.get("source", "Document")
-                            st.markdown(f"**Excerpt {index} — {Path(str(source)).name}**")
-                            if "page" in metadata:
-                                st.caption(f"Page: {metadata['page']}")
-                            if "slide" in metadata:
-                                st.caption(f"Slide: {metadata['slide']}")
-                            if "sheet" in metadata:
-                                st.caption(f"Worksheet: {metadata['sheet']}")
-                            st.write(document.page_content)
+                st.session_state.chat_history.append(
+                    {"role": "user", "content": clean_question}
+                )
+                st.session_state.chat_history.append(
+                    {"role": "assistant", "content": answer}
+                )
+                st.session_state.latest_answer_result = result
+                st.rerun()
             except Exception as exc:
                 st.error(f"Unable to answer your question: {exc}")
+
+    # Show source details for the most recent assistant answer.
+    latest_result = st.session_state.get("latest_answer_result")
+    if latest_result:
+        sources = latest_result.get("sources", [])
+        documents = latest_result.get("documents", [])
+        if sources:
+            st.subheader("Sources for the latest answer")
+            for source in sources:
+                st.write(f"📄 {Path(str(source)).name}")
+        if documents:
+            with st.expander("View retrieved document excerpts"):
+                for index, document in enumerate(documents, start=1):
+                    metadata = document.metadata
+                    source = metadata.get("source", "Document")
+                    st.markdown(f"**Excerpt {index} — {Path(str(source)).name}**")
+                    if "page" in metadata:
+                        st.caption(f"Page: {metadata['page']}")
+                    if "slide" in metadata:
+                        st.caption(f"Slide: {metadata['slide']}")
+                    if "sheet" in metadata:
+                        st.caption(f"Worksheet: {metadata['sheet']}")
+                    st.write(document.page_content)
 
 # ------------------------------
 # Take a Quiz — use uploaded context when available
@@ -310,6 +333,7 @@ elif mode == "Take a Quiz":
         st.caption("A quiz will be based on your uploaded documents when relevant content is retrieved.")
 
     topic = st.text_input("Enter a quiz topic", placeholder="Example: Python functions")
+
     if st.button("Generate Quiz", type="primary"):
         if not topic.strip():
             st.warning("Please enter a topic.")
@@ -326,75 +350,94 @@ elif mode == "Take a Quiz":
                     )
                 else:
                     quiz_topic = topic.strip()
+
                 with st.spinner("Generating your quiz..."):
                     quiz_data = generate_quiz_data(quiz_topic)
-                
-                st.subheader("Generated Quiz")
 
-                # Convert Quiz object to dictionary if necessary
                 if hasattr(quiz_data, "model_dump"):
                     quiz_data = quiz_data.model_dump()
                 elif hasattr(quiz_data, "dict") and not isinstance(quiz_data, dict):
                     quiz_data = quiz_data.dict()
 
-                if isinstance(quiz_data, dict):
-                    questions = quiz_data.get("questions", [])
-
-                    if not questions:
-                        st.warning("No questions were generated.")
-                    else:
-                        with st.form("interactive_quiz_form"):
-                            answers = {}
-
-                            for i, question in enumerate(questions):
-                                st.markdown(f"### Question {i + 1}")
-                                st.write(question.get("question", ""))
-
-                                answers[i] = st.radio(
-                                    "Select your answer:",
-                                    question.get("options", []),
-                                    index=None,
-                                    key=f"quiz_answer_{i}",
-                                )
-
-                            submitted = st.form_submit_button(
-                                "Submit Quiz",
-                                type="primary",
-                            )
-
-                        if submitted:
-                            score = 0
-
-                            for i, question in enumerate(questions):
-                                correct = question.get("correct_answer")
-                                selected = answers.get(i)
-
-                                if selected == correct:
-                                    score += 1
-                                    st.success(f"Question {i + 1}: Correct!")
-                                else:
-                                    st.error(
-                                        f"Question {i + 1}: Incorrect. "
-                                        f"Correct answer: {correct}"
-                                    )
-
-                                if question.get("explanation"):
-                                    st.info(
-                                        f"Explanation: {question['explanation']}"
-                                    )
-
-                            total = len(questions)
-                            percentage = score / total * 100
-
-                            st.markdown("## Quiz Results")
-                            st.metric("Your Score", f"{score}/{total}")
-                            st.progress(int(percentage))
-                            st.write(f"Percentage: {percentage:.1f}%")
+                if not isinstance(quiz_data, dict) or not quiz_data.get("questions"):
+                    st.error("No quiz questions were generated. Please try another topic.")
+                    st.session_state.generated_quiz = None
+                    st.session_state.quiz_results = None
                 else:
-                    st.write(quiz_data)
-
+                    st.session_state.generated_quiz = quiz_data
+                    st.session_state.quiz_topic = topic.strip()
+                    st.session_state.quiz_results = None
+                    st.rerun()
             except Exception as exc:
                 st.error(f"Could not generate quiz: {exc}")
+
+    quiz_data = st.session_state.generated_quiz
+    if quiz_data:
+        questions = quiz_data.get("questions", [])
+        st.subheader(f"Quiz: {st.session_state.quiz_topic}")
+
+        with st.form("interactive_quiz_form"):
+            answers = {}
+            for i, question in enumerate(questions):
+                st.markdown(f"### Question {i + 1}")
+                st.write(question.get("question", ""))
+                options = question.get("options", [])
+                answers[str(i)] = st.radio(
+                    "Select your answer:",
+                    options,
+                    index=None,
+                    key=f"quiz_answer_{st.session_state.quiz_topic}_{i}",
+                )
+            submitted = st.form_submit_button("Submit Quiz", type="primary")
+
+        if submitted:
+            score = 0
+            reviewed = []
+            for i, question in enumerate(questions):
+                selected = answers.get(str(i))
+                correct = question.get("correct_answer")
+                is_correct = selected == correct
+                if is_correct:
+                    score += 1
+                reviewed.append({
+                    "question_number": i + 1,
+                    "selected": selected or "Not answered",
+                    "correct": correct,
+                    "is_correct": is_correct,
+                    "explanation": question.get("explanation", ""),
+                })
+            total = len(questions)
+            percentage = (score / total * 100) if total else 0
+            st.session_state.quiz_results = {
+                "score": score,
+                "total": total,
+                "percentage": percentage,
+                "reviewed": reviewed,
+            }
+
+        results = st.session_state.quiz_results
+        if results:
+            st.markdown("## Quiz Results")
+            st.metric("Your Score", f"{results['score']}/{results['total']}")
+            st.progress(int(results["percentage"]))
+            st.write(f"Percentage: {results['percentage']:.1f}%")
+            for item in results["reviewed"]:
+                if item["is_correct"]:
+                    st.success(f"Question {item['question_number']}: Correct!")
+                else:
+                    st.error(
+                        f"Question {item['question_number']}: Incorrect. "
+                        f"Your answer: {item['selected']}. "
+                        f"Correct answer: {item['correct']}"
+                    )
+                if item["explanation"]:
+                    st.info(f"Explanation: {item['explanation']}")
+
+        if st.button("Start a new quiz", key="new_quiz"):
+            st.session_state.generated_quiz = None
+            st.session_state.quiz_results = None
+            st.session_state.quiz_topic = ""
+            st.rerun()
 
 # ------------------------------
 # Topic Summary — use uploaded context when available
@@ -421,7 +464,7 @@ UPLOADED DOCUMENT EXCERPTS:
 """
                 else:
                     prompt = (
-                        f"Create a clear, structured summary of: {topic.strip()}. "
+                        f"Create a cget_vectorstore()lear, structured summary of: {topic.strip()}. "
                         "Include key concepts and important takeaways."
                     )
                 with st.spinner("Preparing your summary..."):
