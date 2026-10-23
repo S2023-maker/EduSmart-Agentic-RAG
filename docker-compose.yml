@@ -1,0 +1,11 @@
+
+services:
+  edusmart:
+    build: .
+    container_name: edusmart-agentic-rag
+    ports:
+      - "8501:8501"
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
