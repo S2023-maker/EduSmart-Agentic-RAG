@@ -1,197 +1,123 @@
-# EduSmart-Agentic-RAG
-### An AI-Powered Educational Assistant Using Retrieval-Augmented Generation
+# 🎓 EduSmart-Agentic-RAG — AI-Powered Learning Assistant
 
-EduSmart-Agentic-RAG is an AI-powered learning assistant designed to help students understand educational content through document-based question answering, topic summaries, quiz generation, and study guides.
+An AI-powered learning assistant built using **Generative AI, Retrieval-Augmented Generation (RAG), LangChain, FAISS, and Streamlit**. EduSmart helps learners interact with educational documents, retrieve relevant information, generate quizzes, and create study materials through a conversational interface.
 
-The application combines Retrieval-Augmented Generation (RAG), semantic search, vector databases, and Large Language Models (LLMs) to generate contextual answers grounded in retrieved educational material.
+🔗 **Live Demo:** https://edusmart-agentic-rag-woaxfsenr5nnztvnxcrkw8.streamlit.app/
 
-## Table of Contents
+🔗 **GitHub Repository:** [EduSmart-Agentic-RAG](https://github.com/S2023-maker/EduSmart-Agentic-RAG)
 
-- [Project Overview](#project-overview)
-- [Objectives](#objectives)
-- [Key Features](#key-features)
-- [System Architecture](#system-architecture)
-- [RAG Workflow](#rag-workflow)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Installation and Setup](#installation-and-setup)
-- [Running the Application](#running-the-application)
-- [Evaluation and Testing](#evaluation-and-testing)
-- [Current Results](#current-results)
-- [Limitations](#limitations)
-- [Security](#security)
-- [Future Improvements](#future-improvements)
+## 🖥️ Application Screenshots
 
-## Project Overview
+### EduSmart AI Tutor — Home Interface
 
-Students often need to search lengthy educational documents to find relevant explanations, revise topics, and prepare for examinations.
+<img width="958" height="532" alt="Screenshot 2026-10-25 200548" src="https://github.com/user-attachments/assets/6bc77a95-e652-4f1c-bbce-c105f1ef5b2a" />
 
-EduSmart-Agentic-RAG provides an interactive interface where users can ask questions about educational material and receive answers based on retrieved document content.
 
-The project demonstrates an end-to-end GenAI application that combines document processing, vector-based retrieval, LLM integration, interactive learning tools, and evaluation.
+### AI-Powered Question Answering
 
-## Objectives
+<img width="1308" height="768" alt="Screenshot 2026-10-25 200734" src="https://github.com/user-attachments/assets/92b7cd44-d33f-4e96-8303-b13b544d49d8" />
 
-- Build a practical application using Generative AI and RAG.
-- Retrieve relevant information from educational documents.
-- Generate contextual answers using an LLM.
-- Provide learning support through quizzes, summaries, and study guides.
-- Reduce unsupported responses by grounding answers in retrieved context.
-- Evaluate retrieval performance and expected answer behavior.
-- Develop a reproducible application suitable for further deployment.
 
-## Key Features
 
-### 1. Document-Based Question Answering
-Ask natural-language questions about educational material and receive student-friendly explanations using retrieved context.
 
-### 2. Retrieval-Augmented Generation
-Combines semantic document retrieval with LLM-based response generation to provide context-aware answers.
+## 🚀 Key Features
 
-### 3. PDF Document Processing
-Processes educational PDFs, splits extracted text into smaller chunks, and prepares the content for semantic search.
+- **AI-Powered Q&A:** Ask questions and receive context-aware answers using RAG.
+- **Document Upload:** Process supported educational files, including PDF, DOCX, TXT, MD, CSV, XLSX, and PPTX.
+- **Semantic Search:** Retrieve relevant document chunks using embeddings and FAISS.
+- **AI Quiz Generation:** Generate multiple-choice quizzes with answer validation and explanations.
+- **Topic Summaries:** Create concise summaries of educational topics.
+- **Study Guide Generation:** Organize learning content into structured study material.
+- **Built-in Curriculum:** Answer questions using the available curriculum when uploaded documents are not present.
+- **RAG Evaluation:** Evaluate retrieval performance and expected answer behavior.
+- **Automated Testing:** Validate application and retrieval functionality using pytest.
+- **Containerization:** Package the application using Docker for reproducible deployment.
 
-### 4. Vector Search with FAISS
-Uses FAISS to store and retrieve vector embeddings efficiently.
+## 🛠️ Tech Stack
 
-### 5. Hugging Face Embeddings
-Uses the `sentence-transformers/all-MiniLM-L6-v2` embedding model to represent text as vectors for semantic retrieval.
+| Category | Technologies |
+|---|---|
+| Programming | Python |
+| Frontend | Streamlit |
+| LLM Integration | Groq API |
+| Generative AI | Large Language Models (LLMs) |
+| RAG Framework | LangChain |
+| Embeddings | Sentence Transformers — `all-MiniLM-L6-v2` |
+| Vector Database | FAISS |
+| Document Processing | LangChain document loaders and text splitters |
+| Data Validation | Pydantic |
+| Evaluation | Retrieval metrics, custom evaluation scripts |
+| Testing | pytest |
+| Deployment | Streamlit Community Cloud, Render |
+| Containerization | Docker |
 
-### 6. Groq LLM Integration
-Uses Groq through LangChain to generate natural-language answers from the retrieved context.
-
-### 7. Interactive Learning Tools
-The Streamlit interface provides:
-- Ask EduSmart
-- Take a Quiz
-- Topic Summary
-- Study Guide
-
-### 8. Source-Aware Responses
-Retrieved document metadata can be used to identify supporting sources and page information.
-
-### 9. Evaluation and Testing
-Includes automated tests, retrieval evaluation, response-behavior checks, and latency measurement scripts.
-
-## System Architecture
+## 🏗️ System Architecture
 
 ```mermaid
 flowchart TD
-    A[Educational PDFs] --> B[Document Loading]
-    B --> C[Text Chunking]
-    C --> D[Hugging Face Embeddings]
-    D --> E[FAISS Vector Index]
-    F[Student Question] --> G[Semantic Retrieval]
-    E --> G
-    G --> H[Retrieved Context]
-    H --> I[Groq LLM]
-    I --> J[Contextual Answer]
-    J --> K[Streamlit Interface]
+    A[User] --> B[Streamlit Interface]
+    B --> C[Document Upload / Question]
+    C --> D[Document Processing]
+    D --> E[Text Chunking]
+    E --> F[Embedding Generation]
+    F --> G[FAISS Vector Store]
+    H[User Question] --> I[Query Processing]
+    I --> J[Semantic Retrieval]
+    G --> J
+    J --> K[Relevant Context]
+    K --> L[Groq LLM]
+    L --> M[Context-Aware Answer]
+    M --> B
+    B --> N[Quiz / Summary / Study Guide]
 ```
 
-## RAG Workflow
+### How RAG Works
 
-**Step 1 — Document ingestion**
+1. **Document ingestion:** Load supported documents and extract their text.
+2. **Text chunking:** Split the extracted text into smaller, manageable chunks.
+3. **Embedding generation:** Convert text chunks into numerical vector representations.
+4. **Vector storage:** Store the embeddings in a FAISS index.
+5. **Semantic retrieval:** Retrieve relevant chunks for the user's question.
+6. **Answer generation:** Pass the retrieved context to the LLM to generate a relevant response.
+7. **Evaluation:** Measure retrieval quality and run expected-behavior checks.
 
-Educational PDFs are loaded and their text is extracted.
-
-**Step 2 — Text chunking**
-
-Documents are divided into smaller, overlapping chunks to improve retrieval.
-
-**Step 3 — Embedding generation**
-
-The embedding model converts document chunks into numerical vectors.
-
-**Step 4 — Vector indexing**
-
-FAISS stores the vectors and associated document information for similarity-based retrieval.
-
-**Step 5 — Question processing**
-
-The student's question is embedded and used to retrieve relevant passages from the vector store.
-
-**Step 6 — Context construction**
-
-Retrieved passages are formatted and passed to the language model as context.
-
-**Step 7 — Answer generation**
-
-The Groq-hosted LLM generates a response using the supplied context and the application's grounding instructions.
-
-**Step 8 — User interaction**
-
-The Streamlit application displays the response and available source information.
-
-## Technology Stack
-
-| Component | Technology |
-|---|---|
-| Programming language | Python |
-| User interface | Streamlit |
-| LLM provider | Groq |
-| LLM integration | LangChain |
-| Embedding model | Sentence Transformers |
-| Vector database | FAISS |
-| Document processing | PyPDFLoader and text splitters |
-| Automated testing | Pytest |
-| Evaluation | Python and CSV reports |
-| Containerization | Docker and Docker Compose |
-
-## Project Structure
+## 📂 Project Structure
 
 ```text
 EduSmart-Agentic-RAG/
 │
 ├── app/
 │   ├── llm.py
-│   ├── rag.py
 │   ├── retriever.py
-│   ├── prompts.py
-│   └── ...
-│
-├── curriculum/
-│   └── Educational PDF files
-│
-├── evaluation/
-│   ├── eval_dataset.json
-│   ├── rag_evaluation.py
-│   ├── retrieval_evaluation.py
-│   ├── answer_quality_evaluation.py
-│   └── ...
-│
-├── faiss_index/
-│   ├── index.faiss
-│   └── index.pkl
+│   ├── rag.py
+│   ├── quiz.py
+│   └── tools.py
 │
 ├── frontend/
 │   └── streamlit_app.py
 │
+├── curriculum/
+├── faiss_index/
+├── vectorstore/
+├── evaluation/
 ├── tests/
-│   ├── test_llm.py
-│   ├── test_rag.py
-│   └── test_retriever.py
 │
-├── .env.example
-├── .gitignore
+├── ingest.py
+├── rag_evaluation.py
+├── retrieval_evaluation.py
+├── compare_top_k.py
+│
+├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
-├── ingest.py
-├── requirements.txt
-├── test_latency.py
+├── .env.example
+├── .gitignore
 └── README.md
 ```
 
-*Some application modules and files are omitted from this overview for readability.*
+*Note: This structure highlights the main project components. Some evaluation scripts or directories may be located elsewhere in your current repository.*
 
-## Installation and Setup
-
-### Prerequisites
-
-- Python 3.11 recommended for this project
-- Git
-- A Groq API key
-- Internet access for downloading model files and accessing the LLM API
+## ⚙️ Installation and Local Setup
 
 ### 1. Clone the repository
 
@@ -202,155 +128,137 @@ cd EduSmart-Agentic-RAG
 
 ### 2. Create a virtual environment
 
-```powershell
-python -m venv .venv
-```
-
-Activate it on Windows:
+**Windows PowerShell**
 
 ```powershell
+py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
 ### 3. Install dependencies
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
 ### 4. Configure environment variables
 
-Create a local `.env` file in the project root and add your own Groq API key:
+Create a `.env` file in the project root using `.env.example` as a reference.
 
-```text
-GROQ_API_KEY=your_groq_api_key_here
+```env
+GROQ_API_KEY=your_groq_api_key
 ```
 
-Replace the placeholder with your actual key. Never commit the real `.env` file to GitHub.
+Use the actual variable names required by your code. If your application uses additional services, configure their credentials separately. **Never commit API keys, passwords, or service-role keys to GitHub.**
 
-### 5. Prepare the vector index
-
-If the prebuilt index is unavailable or you need to regenerate it, place the required curriculum PDFs in the expected directory and run:
-
-```bash
-python ingest.py
-```
-
-This prepares the FAISS index used by the retrieval pipeline.
-
-## Running the Application
-
-Start the Streamlit application from the project root:
+### 5. Run the application
 
 ```bash
 streamlit run frontend/streamlit_app.py
 ```
 
-Open the local URL printed in the terminal, usually:
+Open the local URL displayed in the terminal, usually `http://localhost:8501`.
 
-`http://localhost:8501`
+## 🐳 Run with Docker
 
-You can then ask questions, explore the learning tools, and test the application's responses.
+Build the Docker image:
 
-## Evaluation and Testing
+```bash
+docker build -t edusmart-agentic-rag .
+```
 
-The project includes scripts for evaluating retrieval behavior, answer generation, and basic functionality.
+Run the container:
 
-### Run automated tests
+```bash
+docker run --env-file .env -p 8501:8501 edusmart-agentic-rag
+```
+
+Open `http://localhost:8501` in your browser.
+
+For Render or another container host, configure the application to bind to `0.0.0.0` and use the port supplied by the hosting platform.
+
+## 📊 Evaluation and Testing
+
+The project includes retrieval evaluation, answer-behavior checks, and automated tests.
+
+### Retrieval Evaluation
+
+| Metric | Recorded Result |
+|---|---:|
+| Average Precision@4 | 0.75 |
+| Chapter Recall@4 | 1.00 |
+| Mean Reciprocal Rank (MRR) | 1.00 |
+
+These are results from the project's recorded evaluation run, not a guarantee of performance on every dataset.
+
+### Answer-Quality Checks
+
+- **5/5 expected-behavior checks passed** in the recorded evaluation.
+- Retrieval relevance and expected answer behavior are evaluated separately.
+
+### Run the tests
 
 ```bash
 python -m pytest -v
 ```
 
-### Run retrieval evaluation
+Run the evaluation scripts available in the repository:
 
 ```bash
-python evaluation/retrieval_evaluation.py
+python retrieval_evaluation.py
+python rag_evaluation.py
 ```
 
-The retrieval evaluation reports:
+Check the exact script paths in your repository if these commands differ from your current setup.
 
-- Precision@K
-- Chapter Recall@K
-- Mean Reciprocal Rank (MRR)
+## ☁️ Deployment
 
-These metrics help assess whether the expected chapter appears among the retrieved results and how highly it is ranked.
+The project has been deployed using Streamlit Community Cloud and Docker-based hosting.
 
-### Run answer-quality evaluation
+- **Streamlit Community Cloud:** Provides a public interface for demonstrating the application.
+- **Render:** Used to explore container-based deployment.
+- **Docker:** Supports consistent packaging and local execution.
 
-```bash
-python evaluation/answer_quality_evaluation.py
-```
+Cloud deployment is subject to platform-specific memory, compute, and usage limits. Large embedding models and vector indexes can increase resource consumption.
 
-This script checks response generation, empty answers, and expected behavior for supported and unsupported questions.
+## 🔐 Security Considerations
 
-### Run RAG evaluation
+- Store API keys in environment variables or your hosting platform's secret manager.
+- Never expose private service credentials in source code.
+- Configure appropriate access controls for uploaded documents and stored conversation data.
+- Avoid logging sensitive document content or user credentials.
 
-```bash
-python evaluation/rag_evaluation.py
-```
+## 🔮 Future Enhancements
 
-### Latency testing
+- Integrate **Qdrant Cloud** for managed vector storage.
+- Add a FastAPI backend with dedicated REST endpoints.
+- Implement persistent conversation history using Supabase.
+- Add response faithfulness and context-relevance evaluation.
+- Introduce CI/CD with GitHub Actions.
+- Improve caching and memory efficiency for resource-constrained deployments.
+- Add authentication, monitoring, and structured application logging.
 
-The project also includes `test_latency.py` for measuring response time. Actual latency depends on model response time, hardware, network conditions, and retrieval overhead.
+*These are planned enhancements, not claims about currently implemented features.*
 
-## Current Results
+## 💡 Key Learning Outcomes
 
-The following results were observed during the current development-stage evaluation.
+This project demonstrates practical experience with:
 
-| Evaluation | Result |
-|---|---|
-| Automated tests | 6 passed |
-| Number of retrieval evaluation questions | 5 |
-| Average Precision@4 | 0.75 |
-| Chapter Recall@4 | 1.00 |
-| Mean Reciprocal Rank | 1.00 |
-| Answer expected-behavior checks | 5/5 passed |
+- Building a Retrieval-Augmented Generation pipeline.
+- Integrating LLM APIs into an application.
+- Implementing semantic search using embeddings and FAISS.
+- Processing multiple document formats.
+- Generating structured outputs with validation.
+- Evaluating retrieval performance and testing expected behavior.
+- Containerizing and deploying a Python AI application.
 
-### Interpreting the results
-
-- **Precision@4 = 0.75:** On average, three of the four retrieved chunks belonged to the expected chapter, based on the current chapter-level relevance labels.
-- **Chapter Recall@4 = 1.00:** At least one chunk from the expected chapter was retrieved for each of the five evaluation questions.
-- **MRR = 1.00:** A relevant chapter appeared at rank 1 for each evaluated question.
-- **Answer checks = 5/5:** All five responses passed the evaluation script's expected-behavior checks, including two questions whose answers were absent from the supplied documents.
-
-These are preliminary results from a small test set. Chapter-level relevance does not guarantee that every retrieved passage is relevant, and heuristic answer checks do not establish factual accuracy. Larger test sets and manual faithfulness review are needed.
-
-## Limitations
-
-- Evaluation currently uses a small set of questions.
-- Retrieval metrics are based on expected chapter labels rather than comprehensive passage-level annotations.
-- Generated answers can still contain errors or unsupported details.
-- Response latency can vary across requests.
-- PDF processing depends on the quality and extractability of document text.
-- Uploaded-document persistence and user-specific conversation storage depend on the application's configured storage behavior.
-- Production use requires additional security, privacy, and deployment validation.
-
-## Security
-
-- Store API keys in environment variables, not in source code.
-- Keep `.env`, local conversation history, uploaded private documents, and virtual environments out of version control.
-- Use `.env.example` as a template containing placeholders only.
-- Review uploaded files and document-handling behavior before accepting sensitive information.
-- Restrict access appropriately before deploying for real users.
-
-## Future Improvements
-
-- Expand the evaluation dataset and add manually verified passage-level relevance labels.
-- Improve retrieval with reranking and retrieval-quality comparisons.
-- Add broader faithfulness and hallucination checks.
-- Support additional document formats through appropriate loaders.
-- Add persistent, user-specific conversation history and authentication where required.
-- Improve latency through caching and model/retrieval optimization.
-- Deploy the application with appropriate secrets management, monitoring, and access controls.
-- Add a demonstration video and application screenshots.
-
-## Project Status
-
-The core application, initial retrieval and answer-quality evaluations, and automated tests have been completed. GitHub publishing and deployment validation are the next steps.
-
-## Author
+## 👩‍💻 Author
 
 **Shreya Joshi**
 
-GitHub: [S2023-maker](https://github.com/S2023-maker)
+AI/ML and Data Science portfolio project focused on Generative AI, RAG, semantic retrieval, evaluation, and application deployment.
+
+---
+
+⭐ If you find this project useful, consider starring the repository.
