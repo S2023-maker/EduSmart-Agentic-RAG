@@ -3,7 +3,7 @@ from functools import lru_cache
 
 import streamlit as st
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+
 
 
 # ============================================================
@@ -20,7 +20,9 @@ FAISS_DIR = BASE_DIR / "faiss_index"
 
 @st.cache_resource(show_spinner=False)
 def get_embeddings():
-    """Load the embedding model once per Streamlit server process."""
+    """Load the embedding model only when retrieval needs it."""
+    from langchain_huggingface import HuggingFaceEmbeddings
+
     return HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
