@@ -264,10 +264,11 @@ elif mode == "Ask EduSmart":
         )
 
 
-    if st.session_state.chat_history:
-        if st.button("Clear conversation", key="clear_chat"):
-            st.session_state.chat_history = []
-            st.rerun()
+        if st.session_state.chat_history:
+            if st.button("Clear conversation", key="clear_chat"):
+                st.session_state.chat_history = []
+                st.session_state.latest_answer_result = None
+                st.rerun()
 
     for item in st.session_state.chat_history:
         with st.chat_message(item["role"]):
@@ -280,28 +281,57 @@ elif mode == "Ask EduSmart":
         key="question_input",
     )
 
+    
     if st.button("Get Answer", type="primary"):
         clean_question = question.strip()
+
         if not clean_question:
             st.warning("Please enter a question.")
         else:
             try:
-                with st.spinner("EduSmart is preparing your answer..."):
-                    result = answer_question(
-                        clean_question,
-                        vectorstore=st.session_state.uploaded_vectorstore,
+                with st.spinner("EduSmart is thinking..."):
+                    uploaded_context = get_uploaded_context(clean_question)
+
+                    if uploaded_context:
+                        agent_question = f"""
+Answer the student's question using the uploaded document
+excerpts below as the primary source.
+
+Student question:
+{clean_question}
+
+Uploaded document excerpts:
+{uploaded_context}
+
+If the excerpts do not answer the question, clearly say so.
+Do not invent facts from the uploaded documents.
+"""
+                    else:
+                        agent_question = clean_question
+
+                    answer = run_agent(
+                        agent_question,
+                        chat_history=st.session_state.chat_history,
                     )
-                answer = str(result.get("answer", "No answer was returned."))
+
+                answer = str(answer)
+
                 st.session_state.chat_history.append(
                     {"role": "user", "content": clean_question}
                 )
                 st.session_state.chat_history.append(
                     {"role": "assistant", "content": answer}
                 )
-                st.session_state.latest_answer_result = result
+
+                # Clear old RAG-specific source details because this
+                # answer was generated through the LangGraph agent.
+                st.session_state.latest_answer_result = None
                 st.rerun()
+
             except Exception as exc:
                 st.error(f"Unable to answer your question: {exc}")
+
+        
 
     # Show source details for the most recent assistant answer.
     latest_result = st.session_state.get("latest_answer_result")
